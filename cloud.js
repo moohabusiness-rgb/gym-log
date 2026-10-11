@@ -28,7 +28,7 @@ function screen(msg){
  if(!connected){
     badge.textContent='Not connected';
     status.className='storage-status';
-    status.textContent=msg||'Cloud backup is off. Your data is still saved on this device.';
+    status.textContent=msg||issue||'Cloud backup is off. Your data is still saved on this device.';
     return;
  }
  el('cloudAccountEmail').textContent=session.user.email||'Signed-in user';
