@@ -160,6 +160,15 @@ async function push(){
  try{
    const existing=await cloudRead();
    if(!existing||existing.revision!==pair.revision){issue='Cloud changed since your last sync. Automatic upload stopped. Export local JSON backup before choosing a recovery action.';return}
+   // Never silently replace a richer cloud backup with an empty/reduced local copy.
+   // This also protects against unexpected iOS browser storage eviction.
+   const existingCounts=stats(existing.data),deviceCounts=stats(data);
+   if(deviceCounts.sessions<existingCounts.sessions||
+      deviceCounts.weeks<existingCounts.weeks||
+      (!deviceCounts.baseline&&existingCounts.baseline)){
+      issue='Safety stop: this device contains fewer saved records than the cloud. Automatic overwrite blocked. Export your local backup, then inspect or restore the cloud copy.';
+      return;
+   }
    const snapshot=JSON.parse(JSON.stringify(data));
    const path='/rest/v1/gym_log_snapshots?user_id=eq.'+encodeURIComponent(session.user.id)+'&revision=eq.'+String(pair.revision);
    const rows=await call(path,'PATCH',{data:snapshot},true,{Prefer:'return=representation'});
