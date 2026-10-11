@@ -204,6 +204,7 @@ el('cloudSignOut').addEventListener('click',signOut);
 window.addEventListener('online',()=>{if(dirty())queueSync();else if(ready())check()});
 window.addEventListener('pageshow',()=>{if(dirty())queueSync()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&dirty())queueSync()});
-window.GymCloud={queueSync,refresh:check,getStatus:()=>({connected:ready(),paired:linked(),needsSync:dirty(),issue})};
+function unlink(){clearTimeout(queue);queue=null;pair=null;drop(PAIR);issue='This device is no longer paired. Existing cloud backup was not deleted.';screen()}
+window.GymCloud={queueSync,refresh:check,unlink,getStatus:()=>({connected:ready(),paired:linked(),needsSync:dirty(),issue})};
 init();
 })();
