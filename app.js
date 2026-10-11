@@ -7,17 +7,163 @@ lowerB:{name:'Lower B',day:'Day 5',ex:[['Leg Press',4,10,120,'Quads + glutes'],[
 };
 const STRENGTH=['Bench Press','V-Bar Lat Pulldown','Leg Press','Shoulder Press Machine'];
 const KEY='moGymLog.v1';
+const RECOVERY_KEY=KEY+'.recovery';
+let storageWrites=0;
+let recoverySnapshot=null;
+let recoveryDBPromise=null;
+let recoveryWriteQueue=Promise.resolve();
 const $=id=>document.getElementById(id);
 const defaults=()=>({version:1,sessions:[],tracker:{startDate:'',startWeight:'',startWaist:'',weeks:Array.from({length:12},()=>({ending:'',weight:'',waist:'',steps:'',workouts:'',cardio:'',notes:''})),strength:{}}});
-function load(){const d=defaults();try{const saved=JSON.parse(localStorage.getItem(KEY)||'{}');if(saved&&typeof saved==='object'){d.sessions=Array.isArray(saved.sessions)?saved.sessions:[];const t=saved.tracker||{};d.tracker={...d.tracker,...t};d.tracker.weeks=Array.from({length:12},(_,i)=>({...defaults().tracker.weeks[i],...(t.weeks||[])[i]}));d.tracker.strength=t.strength&&typeof t.strength==='object'?t.strength:{}}}catch(e){console.warn('Saved data could not be read',e)}return d}
+function load(){const d=defaults();try{const raw=localStorage.getItem(KEY)||localStorage.getItem(RECOVERY_KEY)||'{}';const saved=JSON.parse(raw);if(saved&&typeof saved==='object'){d.sessions=Array.isArray(saved.sessions)?saved.sessions:[];const t=saved.tracker||{};d.tracker={...d.tracker,...t};d.tracker.weeks=Array.from({length:12},(_,i)=>({...defaults().tracker.weeks[i],...(t.weeks||[])[i]}));d.tracker.strength=t.strength&&typeof t.strength==='object'?t.strength:{};d.updatedAt=saved.updatedAt||null}}catch(e){console.warn('Saved data could not be read',e)}return d}
 let data=load(),activeWorkout=null,clock=null,clockEnd=0,toastTimer=null;
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function today(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
 function fmt(v){if(!v)return '';const d=new Date(v+'T12:00:00');return Number.isFinite(+d)?d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):v}
 function notify(message){const n=$('toast');n.textContent=message;n.classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>n.classList.add('hidden'),2300)}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(data));return true}catch(e){console.error(e);notify('Unable to save. Check Safari storage.');return false}}
+function persist(){
+ const previousTimestamp=data.updatedAt;
+ data.updatedAt=new Date().toISOString();
+ const json=JSON.stringify(data);
+ try{
+   localStorage.setItem(KEY,json);
+   if(localStorage.getItem(KEY)!==json)throw new Error('Saved data readback failed');
+   storageWrites++;
+   try{localStorage.setItem(RECOVERY_KEY,json)}catch(e){console.warn('Extra local copy not saved',e)}
+   scheduleDeviceRecovery(json);
+   refreshStorageStatus();
+   return true;
+ }catch(e){
+   data.updatedAt=previousTimestamp;
+   console.error('Gym Log save failed',e);
+   notify('Save failed — export a backup!');
+   refreshStorageStatus();
+   return false;
+ }
+}
+
+function safeCurrentRecord(){
+ try{
+   const raw=localStorage.getItem(KEY);
+   if(!raw)return null;
+   const record=JSON.parse(raw);
+   if(!record||typeof record!=='object'||!Array.isArray(record.sessions)||!record.tracker)return null;
+   return record;
+ }catch(e){console.warn('Unable to read current saved record',e);return null}
+}
+function counts(record){
+ const t=record?.tracker||{};
+ const weeks=Array.isArray(t.weeks)?t.weeks:[];
+ const baseline=Number(t.startWeight)>0||Number(t.startWaist)>0;
+ const weeksSaved=weeks.filter(w=>Number(w?.weight)>0||Number(w?.waist)>0||w?.ending||w?.steps||w?.cardio).length;
+ const sessions=Array.isArray(record?.sessions)?record.sessions.length:0;
+ const strength=Object.values(t.strength||{}).reduce((sum,v)=>sum+Object.values(v||{}).filter(x=>x!==null&&x!==undefined&&x!=='').length,0);
+ return {sessions,weeks:weeksSaved,baseline,strength,score:sessions*10+weeksSaved*4+(baseline?3:0)+strength};
+}
+function formatSavedTimestamp(raw){
+ if(!raw)return 'Unknown';
+ const d=new Date(raw);
+ return isNaN(d.getTime())?'Unknown':d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+}
+function refreshStorageStatus(){
+ const box=$('storageStatus'),recover=$('recoverBackup');
+ if(!box||!recover)return;
+ const current=safeCurrentRecord(),n=counts(current);
+ box.classList.remove('good','warning');
+ if(current && n.score>0){
+   box.classList.add('good');
+   box.innerHTML='<strong>✓ Local saved data found</strong>'+
+    n.sessions+' workouts · '+n.weeks+' weekly check-ins · '+(n.baseline?'baseline saved':'no baseline')+
+    '<small>Last saved: '+esc(formatSavedTimestamp(current.updatedAt))+'</small>';
+ }else{
+   box.classList.add('warning');
+   box.innerHTML='<strong>No measurements or workouts found here</strong>'+
+    '<small>This Safari storage area is empty. If you used a Home Screen app or another browser, check that location before entering anything again.</small>';
+ }
+ let backup=null;
+ try{backup=recoverySnapshot?JSON.parse(recoverySnapshot):null}catch(e){backup=null}
+ recover.classList.toggle('hidden',!(backup&&counts(backup).score>n.score));
+}
+function openDeviceRecovery(){
+ return new Promise(resolve=>{
+   if(!('indexedDB' in window))return resolve(null);
+   let request;
+   try{request=indexedDB.open('GymLogDeviceRecovery',1)}
+   catch(e){console.warn('IndexedDB unavailable',e);return resolve(null)}
+   request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains('snapshots'))db.createObjectStore('snapshots')};
+   request.onsuccess=()=>resolve(request.result);
+   request.onerror=()=>resolve(null);
+   request.onblocked=()=>resolve(null);
+ });
+}
+function recoveryDB(){return recoveryDBPromise||(recoveryDBPromise=openDeviceRecovery())}
+async function readDeviceRecovery(){
+ const db=await recoveryDB();
+ if(!db)return null;
+ return new Promise(resolve=>{
+   try{
+     const transaction=db.transaction('snapshots','readonly');
+     const request=transaction.objectStore('snapshots').get('latest');
+     request.onsuccess=()=>resolve(typeof request.result==='string'?request.result:null);
+     request.onerror=()=>resolve(null);
+   }catch(e){resolve(null)}
+ });
+}
+async function writeDeviceRecovery(json){
+ const db=await recoveryDB();
+ if(!db)return false;
+ return new Promise(resolve=>{
+   try{
+     const tx=db.transaction('snapshots','readwrite');
+     tx.objectStore('snapshots').put(json,'latest');
+     tx.oncomplete=()=>resolve(true);
+     tx.onerror=()=>resolve(false);
+     tx.onabort=()=>resolve(false);
+   }catch(e){resolve(false)}
+ });
+}
+function scheduleDeviceRecovery(json){
+ recoveryWriteQueue=recoveryWriteQueue.then(()=>writeDeviceRecovery(json)).then(ok=>{
+   if(ok){recoverySnapshot=json;refreshStorageStatus()}
+   else console.warn('Secondary device recovery copy was not available');
+ },err=>console.warn('Secondary backup failed',err));
+}
+async function initializeDeviceRecovery(){
+ const startWrites=storageWrites;
+ const saved=await readDeviceRecovery();
+ if(saved){
+   recoverySnapshot=saved;
+   try{
+     const backup=JSON.parse(saved),primary=safeCurrentRecord();
+     if(!primary&&storageWrites===startWrites&&counts(backup).score>0){
+       data=backup;
+       if(persist()){
+         renderHome();
+         if(document.getElementById('progress').classList.contains('active'))renderProgress();
+         notify('Recovered saved data on this device');
+       }
+     }
+   }catch(e){console.warn('Recovery copy unreadable',e)}
+ }
+ refreshStorageStatus();
+}
+$('verifyStorage').addEventListener('click',async()=>{
+ await initializeDeviceRecovery();
+ const saved=safeCurrentRecord();
+ notify(saved&&counts(saved).score?'Saved data verified':'No saved records found');
+});
+$('recoverBackup').addEventListener('click',()=>{
+ if(!recoverySnapshot)return notify('No recovery copy found');
+ let candidate;
+ try{candidate=JSON.parse(recoverySnapshot);if(!Array.isArray(candidate.sessions)||!candidate.tracker)throw new Error('Invalid recovery data')}
+ catch(e){notify('Recovery copy is not readable');return}
+ if(!confirm('Restore the previous saved local copy? This replaces your current on-device records. Export a JSON backup first if you want to preserve them.'))return;
+ const old=data;data=candidate;
+ if(!persist()){data=old;return}
+ renderHome();renderHistory();renderProgress();notify('Device recovery copy restored');
+});
+
 function validTab(t){return ['home','workout','history','progress','settings'].includes(t)?t:'home'}
-function navigate(tab){const t=validTab(tab);document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===t));document.querySelectorAll('.tabs [data-tab]').forEach(x=>{const is=x.dataset.tab===t;x.classList.toggle('selected',is);if(is)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current')});if(t==='history')renderHistory();if(t==='progress')renderProgress();if(t==='home')renderHome();window.scrollTo(0,0)}
+function navigate(tab){const t=validTab(tab);document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===t));document.querySelectorAll('.tabs [data-tab]').forEach(x=>{const is=x.dataset.tab===t;x.classList.toggle('selected',is);if(is)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current')});if(t==='history')renderHistory();if(t==='progress')renderProgress();if(t==='home')renderHome();if(t==='settings')refreshStorageStatus();window.scrollTo(0,0)}
 function fromHash(){navigate(validTab((location.hash||'#home').slice(1)))}
 window.addEventListener('hashchange',fromHash);
 document.querySelectorAll('.tabs [data-tab]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const t=a.dataset.tab;if(location.hash==='#'+t)navigate(t);else location.hash=t}));
@@ -75,7 +221,7 @@ function latestCheckin(){
 }
 function showProgressSummary(){
  const t=data.tracker,latest=latestCheckin(),el=$('progressSummary');
- if(!latest){el.innerHTML='<p class="summary-note">Your baseline is saved. Enter your first weekly check-in above to compare measurements and see the charts.</p>';return}
+ if(!latest){const baseOK=validMeasure(t.startWeight)!==null||validMeasure(t.startWaist)!==null;el.innerHTML='<p class="summary-note">'+(baseOK?'Your baseline is saved. Enter a weekly check-in above to compare measurements and see the charts.':'No starting measurements are saved in this browser storage area. Check Settings → Saved data & recovery before entering them again.')+'</p>';return}
  const bw=validMeasure(t.startWeight),bc=validMeasure(t.startWaist);
  const measures=[
    ['Weight',latest.weight,bw,'kg'],
@@ -164,4 +310,4 @@ $('export').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(da
 $('import').addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const incoming=JSON.parse(r.result);if(!Array.isArray(incoming.sessions)||!incoming.tracker||!Array.isArray(incoming.tracker.weeks))throw Error('Bad format');if(!confirm('Replace your current workout history with this backup? Export your current data first if needed.'))return;const old=data;data=incoming;if(!persist()){data=old;return}data=load();renderHome();renderProgress();renderHistory();notify('Backup restored')}catch(err){alert('Not a valid Gym Log backup.')}};r.readAsText(f);e.target.value=''});
 $('reset').addEventListener('click',()=>{if(!confirm('Delete ALL saved workouts and tracker data on this device? This cannot be undone.'))return;data=defaults();if(persist()){renderHome();renderProgress();renderHistory();go('home');notify('Local data deleted')}});
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(err=>console.warn('Offline cache unavailable',err)));
-renderHome();fromHash();
+renderHome();fromHash();initializeDeviceRecovery();
