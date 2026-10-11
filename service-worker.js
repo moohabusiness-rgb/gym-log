@@ -1,6 +1,6 @@
 /* Gym Log offline-first app shell. Workout data stays in localStorage. */
-const CACHE='gym-log-offline-v5';
-const APP_SHELL=['./','./index.html','./styles.css','./app.js','./manifest.webmanifest','./icon.svg','./icon-192.png'];
+const CACHE='gym-log-offline-v6';
+const APP_SHELL=['./','./index.html','./styles.css','./app.js','./cloud.js','./manifest.webmanifest','./icon.svg','./icon-192.png'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });
@@ -20,7 +20,7 @@ self.addEventListener('fetch',event=>{
    event.respondWith(networkFirst(request,'./index.html'));
    return;
  }
- if(/\/(app\.js|styles\.css)$/.test(url.pathname)){
+ if(/\/(app\.js|cloud\.js|styles\.css)$/.test(url.pathname)){
    event.respondWith(networkFirst(request));
    return;
  }
