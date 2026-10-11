@@ -23,12 +23,12 @@ window.addEventListener('hashchange',fromHash);
 document.querySelectorAll('.tabs [data-tab]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const t=a.dataset.tab;if(location.hash==='#'+t)navigate(t);else location.hash=t}));
 function go(tab){if(location.hash==='#'+tab)navigate(tab);else location.hash=tab}
 function sessionsThisWeek(){const d=new Date(),start=new Date(d.getFullYear(),d.getMonth(),d.getDate());start.setDate(start.getDate()-((start.getDay()+6)%7));const startDay=[start.getFullYear(),String(start.getMonth()+1).padStart(2,'0'),String(start.getDate()).padStart(2,'0')].join('-');return data.sessions.filter(s=>s.date>=startDay).length}
-function trackerWeek(){if(!data.tracker.startDate)return 1;const start=new Date(data.tracker.startDate+'T12:00:00').getTime();if(!Number.isFinite(start))return 1;return Math.min(12,Math.max(1,Math.floor((Date.now()-start)/604800000)+1))}
+function trackerWeek(){if(!data.tracker.startDate)return 1;const start=new Date(data.tracker.startDate+'T12:00:00').getTime();if(!Number.isFinite(start))return 1;return Math.min(12,Math.max(1,Math.floor((Date.now()-start)/604800000)))}
 function renderHome(){
  $('workouts').innerHTML=Object.entries(PLAN).map(([key,p])=>'<button class="workout-choice" data-workout="'+key+'"><b>'+p.name+'</b><small>'+p.day+' · '+p.ex.length+' exercises</small><span>Start workout →</span></button>').join('');
  document.querySelectorAll('[data-workout]').forEach(el=>el.addEventListener('click',()=>startWorkout(el.dataset.workout)));
  $('sessionsCount').textContent=data.sessions.length;$('thisWeek').textContent=sessionsThisWeek()+' / 4 workouts this week';$('trackerWeek').textContent=trackerWeek();
- const vals=data.tracker.weeks.map(w=>Number(w.weight)).filter(x=>Number.isFinite(x)&&x>0);$('latestWeight').textContent=vals.length?vals[vals.length-1].toFixed(1)+' kg':'—';
+ const vals=data.tracker.weeks.map(w=>Number(w.weight)).filter(x=>Number.isFinite(x)&&x>0);const baseline=Number(data.tracker.startWeight);$('latestWeight').textContent=vals.length?vals[vals.length-1].toFixed(1)+' kg':(Number.isFinite(baseline)&&baseline>0?baseline.toFixed(1)+' kg':'—');
 }
 function lastSession(key){return data.sessions.filter(s=>s.workoutKey===key).sort((a,b)=>b.date.localeCompare(a.date)||(b.id||0)-(a.id||0))[0]}
 function startWorkout(key){
@@ -57,28 +57,105 @@ function renderHistory(){
  }).join('');
  document.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>{if(confirm('Permanently delete this workout?')){data.sessions=data.sessions.filter(s=>String(s.id)!==b.dataset.delete);persist();renderHistory();renderHome()}}));
 }
+
+function validMeasure(raw){if(raw===undefined||raw===null||raw==='')return null;const n=Number(raw);return Number.isFinite(n)&&n>0?n:null}
+function signedDelta(current,base,unit){if(current===null||base===null)return '—';const diff=current-base;return (diff>0?'+':'')+diff.toFixed(1)+' '+unit}
+function showBaseline(){
+ const t=data.tracker,weight=validMeasure(t.startWeight),waist=validMeasure(t.startWaist);
+ if(weight===null&&waist===null&&!t.startDate){$('baselineSummary').innerHTML='';return}
+ $('baselineSummary').innerHTML='<strong>✓ Starting point saved on this device</strong>'+
+ '<div class="saved-values"><span>Date: '+esc(t.startDate?fmt(t.startDate):'Not set')+'</span>'+
+ '<span>Weight: '+(weight!==null?weight.toFixed(1)+' kg':'Not set')+'</span>'+
+ '<span>Waist: '+(waist!==null?waist.toFixed(1)+' cm':'Not set')+'</span></div>'+
+ '<small>Baseline / Week 0. You can edit these fields and save again if needed.</small>';
+}
+function latestCheckin(){
+ const rows=data.tracker.weeks.map((w,i)=>({week:i+1,row:w,weight:validMeasure(w.weight),waist:validMeasure(w.waist)}));
+ return rows.filter(w=>w.weight!==null||w.waist!==null).at(-1)||null;
+}
+function showProgressSummary(){
+ const t=data.tracker,latest=latestCheckin(),el=$('progressSummary');
+ if(!latest){el.innerHTML='<p class="summary-note">Your baseline is saved. Enter your first weekly check-in above to compare measurements and see the charts.</p>';return}
+ const bw=validMeasure(t.startWeight),bc=validMeasure(t.startWaist);
+ const measures=[
+   ['Weight',latest.weight,bw,'kg'],
+   ['Waist',latest.waist,bc,'cm']
+ ];
+ const stats=measures.map(([label,value,base,unit])=>{
+   const diff=(value!==null&&base!==null)?value-base:null;
+   const cls=diff===null?'':diff<0?'negative':diff>0?'positive':'';
+   return '<div class="summary-stat"><small>'+label+'</small>'+
+     '<b class="'+cls+'">'+(value!==null?value.toFixed(1)+' '+unit:'—')+'</b>'+
+     '<span>'+(diff!==null?esc(signedDelta(value,base,unit))+' vs. start':'No baseline comparison')+'</span></div>';
+ }).join('');
+ el.innerHTML='<div class="summary-heading">✓ Latest saved check-in · Week '+latest.week+(latest.row.ending?' · '+esc(fmt(latest.row.ending)):'')+'</div>'+
+ '<div class="summary-stats">'+stats+'</div>'+
+ '<div class="summary-note">Saved locally. Your baseline and weekly entries remain here when you reopen this app on the same device.</div>';
+}
+function fillQuickCheckin(){
+ const i=Math.max(0,Math.min(11,Number($('checkinWeek').value)-1));
+ const w=data.tracker.weeks[i]||{};
+ $('checkinDate').value=w.ending||today();
+ $('checkinWeight').value=w.weight||'';
+ $('checkinWaist').value=w.waist||'';
+}
+$('checkinWeek').addEventListener('change',fillQuickCheckin);
+$('saveCheckin').addEventListener('click',()=>{
+ const i=Number($('checkinWeek').value)-1;
+ if(!Number.isInteger(i)||i<0||i>=12)return notify('Select a valid week');
+ const weight=validMeasure($('checkinWeight').value),waist=validMeasure($('checkinWaist').value);
+ if(weight===null&&waist===null)return notify('Enter your weight or waist measurement');
+ const date=$('checkinDate').value||today();
+ const previous={...data.tracker.weeks[i]};
+ data.tracker.weeks[i]={...previous,ending:date,weight:weight!==null?String(weight):previous.weight,waist:waist!==null?String(waist):previous.waist};
+ if(!persist()){data.tracker.weeks[i]=previous;return}
+ renderProgress();renderHome();notify('Week '+(i+1)+' check-in saved');
+});
+
 function renderProgress(){
  const t=data.tracker;$('startDate').value=t.startDate||'';$('startWeight').value=t.startWeight||'';$('startWaist').value=t.startWaist||'';
+ $('checkinWeek').innerHTML=Array.from({length:12},(_,i)=>'<option value="'+(i+1)+'">Week '+(i+1)+'</option>').join('');
+ $('checkinWeek').value=String(trackerWeek());
+ fillQuickCheckin();showBaseline();showProgressSummary();
  $('weeklyItems').innerHTML=t.weeks.map((w,i)=>'<article class="week-card"><h3>Week '+(i+1)+'</h3><div class="week-grid">'+
  ['ending','weight','waist','steps','workouts','cardio','notes'].map(k=>{const labels={ending:'Week ending',weight:'Weight kg',waist:'Waist cm',steps:'Average daily steps',workouts:'Workouts completed /4',cardio:'Cardio minutes',notes:'Notes'};const type=k==='ending'?'date':k==='notes'?'text':'number';const step=k==='weight'||k==='waist'?'step="0.1"':'step="1"';return '<label class="'+(k==='notes'?'span2':'')+'">'+labels[k]+'<input data-week="'+i+'" data-field="'+k+'" type="'+type+'" '+step+' value="'+esc(w[k]||'')+'"></label>'}).join('')+
  '</div><button class="secondary wide" data-save-week="'+i+'">Save week '+(i+1)+'</button></article>').join('');
- document.querySelectorAll('[data-save-week]').forEach(b=>b.addEventListener('click',()=>{const i=Number(b.dataset.saveWeek);document.querySelectorAll('[data-week="'+i+'"]').forEach(el=>t.weeks[i][el.dataset.field]=el.value);persist();drawCharts();notify('Week '+(i+1)+' saved');renderHome()}));
+ document.querySelectorAll('[data-save-week]').forEach(b=>b.addEventListener('click',()=>{
+ const i=Number(b.dataset.saveWeek),previous={...t.weeks[i]};
+ document.querySelectorAll('[data-week="'+i+'"]').forEach(el=>t.weeks[i][el.dataset.field]=el.value);
+ if(!persist()){t.weeks[i]=previous;return}
+ showProgressSummary();drawCharts();renderHome();notify('Week '+(i+1)+' saved');
+}));
  $('strengthItems').innerHTML=STRENGTH.map(name=>{const vals=t.strength[name]||{};return '<div class="strength-row"><strong>'+name+'</strong><div class="strength-grid">'+['start','w4','w8','w12'].map((k,j)=>'<label>'+['Start','Week 4','Week 8','Week 12'][j]+'<input type="number" min="0" step="0.5" inputmode="decimal" data-strength="'+esc(name)+'" data-col="'+k+'" value="'+esc(vals[k]||'')+'"></label>').join('')+'</div></div>'}).join('');
  drawCharts();
 }
-$('saveStart').addEventListener('click',()=>{data.tracker.startDate=$('startDate').value;data.tracker.startWeight=$('startWeight').value;data.tracker.startWaist=$('startWaist').value;if(persist()){notify('Starting values saved');renderHome()}});
+$('saveStart').addEventListener('click',()=>{
+ const t=data.tracker,old={startDate:t.startDate,startWeight:t.startWeight,startWaist:t.startWaist};
+ const weight=validMeasure($('startWeight').value),waist=validMeasure($('startWaist').value);
+ if(weight===null&&waist===null){notify('Enter a starting weight or waist');return}
+ t.startDate=$('startDate').value;t.startWeight=weight!==null?String(weight):'';t.startWaist=waist!==null?String(waist):'';
+ if(!persist()){Object.assign(t,old);return}
+ showBaseline();showProgressSummary();drawCharts();renderHome();notify('Starting point saved');
+});
 $('saveStrength').addEventListener('click',()=>{document.querySelectorAll('[data-strength]').forEach(inp=>{const name=inp.dataset.strength;data.tracker.strength[name]??={};data.tracker.strength[name][inp.dataset.col]=inp.value});if(persist())notify('Strength snapshot saved')});
-function drawCharts(){chart('weightChart',data.tracker.weeks.map(w=>w.weight),'kg');chart('waistChart',data.tracker.weeks.map(w=>w.waist),'cm')}
+function drawCharts(){
+ chart('weightChart',[data.tracker.startWeight,...data.tracker.weeks.map(w=>w.weight)],'kg');
+ chart('waistChart',[data.tracker.startWaist,...data.tracker.weeks.map(w=>w.waist)],'cm');
+}
 function chart(id,raw,unit){
- const canvas=$(id),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;ctx.clearRect(0,0,w,h);ctx.fillStyle='#f5f8fa';ctx.fillRect(0,0,w,h);
- const pts=raw.map((v,i)=>({i,value:v===''||v==null?NaN:Number(v)})).filter(p=>Number.isFinite(p.value)&&p.value>0);
- ctx.strokeStyle='#dce7ee';ctx.lineWidth=1;for(let i=0;i<4;i++){const y=28+i*58;ctx.beginPath();ctx.moveTo(38,y);ctx.lineTo(w-20,y);ctx.stroke()}
- if(!pts.length){ctx.fillStyle='#73899b';ctx.font='19px Arial';ctx.fillText('Add weekly measurements to see your trend',45,h/2);return}
- const min=Math.min(...pts.map(p=>p.value)),max=Math.max(...pts.map(p=>p.value)),pad=Math.max((max-min)*.2,unit==='kg'?1:.5);
- const X=i=>38+i*(w-65)/11,Y=v=>h-29-(v-(min-pad))/(max-min+2*pad)*(h-58);
- ctx.strokeStyle='#20857f';ctx.lineWidth=4;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(X(p.i),Y(p.value)):ctx.moveTo(X(p.i),Y(p.value)));ctx.stroke();
- pts.forEach(p=>{ctx.beginPath();ctx.fillStyle='#12314d';ctx.arc(X(p.i),Y(p.value),5,0,Math.PI*2);ctx.fill()});
- ctx.fillStyle='#133451';ctx.font='bold 17px Arial';ctx.fillText(pts.at(-1).value.toFixed(1)+' '+unit,w-115,21);
+ const canvas=$(id),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='#f5f8fa';ctx.fillRect(0,0,w,h);
+ const pts=raw.map((v,i)=>({i,value:validMeasure(v)})).filter(p=>p.value!==null);
+ ctx.strokeStyle='#dce7ee';ctx.lineWidth=1;
+ for(let i=0;i<4;i++){const y=30+i*51;ctx.beginPath();ctx.moveTo(42,y);ctx.lineTo(w-20,y);ctx.stroke()}
+ if(!pts.length){ctx.fillStyle='#73899b';ctx.font='18px Arial';ctx.fillText('Save your starting values to begin',42,h/2);return}
+ const vals=pts.map(p=>p.value),min=Math.min(...vals),max=Math.max(...vals),pad=Math.max((max-min)*.2,unit==='kg'?1:0.5);
+ const X=i=>42+i*(w-65)/12,Y=v=>h-38-(v-(min-pad))/(max-min+2*pad)*(h-72);
+ ctx.strokeStyle='#20857f';ctx.lineWidth=4;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(X(p.i),Y(p.value)):ctx.moveTo(X(p.i),Y(p.value)));if(pts.length>1)ctx.stroke();
+ pts.forEach(p=>{ctx.beginPath();ctx.fillStyle=p.i===0?'#12314d':'#20857f';ctx.arc(X(p.i),Y(p.value),6,0,Math.PI*2);ctx.fill()});
+ ctx.fillStyle='#60788b';ctx.font='13px Arial';ctx.fillText('Start',42,h-10);ctx.fillText('W6',X(6)-10,h-10);ctx.fillText('W12',w-52,h-10);
+ ctx.fillStyle='#133451';ctx.font='bold 18px Arial';ctx.fillText(vals.at(-1).toFixed(1)+' '+unit,w-128,22);
+ if(pts.length===1){ctx.fillStyle='#73899b';ctx.font='14px Arial';ctx.fillText('Baseline recorded — add a weekly check-in',50,60);}
 }
 function startRest(seconds){clearInterval(clock);clockEnd=Date.now()+1000*seconds;$('timerBox').classList.remove('hidden');showTimer();clock=setInterval(showTimer,250)}
 function showTimer(){const left=Math.max(0,Math.ceil((clockEnd-Date.now())/1000));$('timerLabel').textContent=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');if(left===0){clearInterval(clock);if(navigator.vibrate)navigator.vibrate(200);notify('Rest complete');$('timerBox').classList.add('hidden')}}
