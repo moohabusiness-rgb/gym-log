@@ -36,7 +36,32 @@
  <h3 class="detail-heading">Detailed weekly records</h3><p class="hint">Optional: record steps, workouts, cardio, and notes for each week below.</p><div id="weeklyItems"></div>
  <div class="panel"><h3>Strength snapshots</h3><p class="hint">Record the working weight used for your prescribed reps.</p><div id="strengthItems"></div><button id="saveStrength" class="secondary wide">Save strength values</button></div>
 </section>
-<section id="settings" class="view"><h2>Settings & backups</h2><div class="panel"><h3>Offline storage</h3><p>Workout records are saved on this device. Data does not automatically sync to other devices. Export a backup regularly so you don't lose your history if Safari storage is cleared or you change phones.</p><button class="secondary wide" id="export">Export JSON backup</button><label class="import">Import JSON backup<input id="import" type="file" accept=".json,application/json"></label></div>
+<section id="settings" class="view"><h2>Settings & backups</h2>
+
+<div class="panel cloud-panel">
+ <div class="cloud-title"><div><h3>Secure cloud backup</h3><p class="hint">Supabase · private account · offline-first</p></div><span id="cloudBadge" class="cloud-badge">Not connected</span></div>
+ <div id="cloudStatus" class="storage-status" aria-live="polite">Cloud backup is optional. Your workouts will still save on this phone.</div>
+ <div id="cloudAuthForm">
+  <label>Email<input id="cloudEmail" type="email" autocomplete="username email" autocapitalize="none" spellcheck="false" placeholder="your@email.com"></label>
+  <label>Password<input id="cloudPassword" type="password" autocomplete="current-password" minlength="8" placeholder="At least 8 characters"></label>
+  <div class="cloud-actions">
+   <button id="cloudSignIn" class="primary">Sign in</button>
+   <button id="cloudCreate" class="secondary">Create account</button>
+  </div>
+  <p class="hint">You may need to confirm your email once. Then return here and sign in using the same email and password.</p>
+ </div>
+ <div id="cloudConnected" class="hidden">
+  <div class="cloud-account"><strong id="cloudAccountEmail"></strong><small id="cloudLastSynced">No cloud backup yet</small></div>
+  <div id="cloudComparison" class="cloud-comparison" aria-live="polite"></div>
+  <button id="cloudCheck" class="secondary wide">Check cloud backup</button>
+  <div class="cloud-actions stacked">
+   <button id="cloudUpload" class="primary">Back up this device</button>
+   <button id="cloudRestore" class="mutedbtn">Restore cloud to this device</button>
+  </div>
+  <button id="cloudSignOut" class="textbtn wide">Sign out of cloud</button>
+  <p class="hint">First upload is always your choice. After this device is paired, changes sync online when possible. If two devices change independently, sync stops and asks you to choose — it will not silently overwrite either copy.</p>
+ </div>
+ </div><div class="panel"><h3>Offline storage</h3><p>Workout records are saved on this device. Data does not automatically sync to other devices. Export a backup regularly so you don't lose your history if Safari storage is cleared or you change phones.</p><button class="secondary wide" id="export">Export JSON backup</button><label class="import">Import JSON backup<input id="import" type="file" accept=".json,application/json"></label></div>
 <div class="panel"><h3>Saved data & recovery</h3>
 <p class="hint">See whether this device can read your saved records. A second local recovery copy is maintained on supported browsers, but a downloaded backup is still important.</p>
 <div id="storageStatus" class="storage-status" aria-live="polite">Checking device storage…</div>
@@ -50,4 +75,5 @@
 <div class="timer hidden" id="timerBox"><div><strong id="timerLabel">01:30</strong><small>Rest timer</small></div><button id="stopTimer">Cancel</button></div>
 <div class="toast hidden" id="toast" role="status"></div>
 <script defer src="./app.js"></script>
+<script defer src="./cloud.js"></script>
 </body></html>
