@@ -1,0 +1,19 @@
+{
+  "name": "Upper / Lower Gym Log",
+  "short_name": "Gym Log",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f8fa",
+  "theme_color": "#12314d",
+  "description": "Personal offline-first workout history and 12-week progress tracker.",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
