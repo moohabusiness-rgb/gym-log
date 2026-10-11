@@ -43,3 +43,27 @@ select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:1
 .storage-status.good{background:var(--mint);border-color:#b9dcd4}
 .storage-status.warning{background:#fff6e8;border-color:#eed4ab}
 .storage-status small{display:block;font-size:11px;color:var(--muted);margin-top:6px}
+
+/* Private cloud sync controls */
+.cloud-title{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.cloud-title h3{margin:0 0 3px}
+.cloud-title .hint{margin:0 0 10px}
+.cloud-badge{background:#e8eef3;color:#4b6376;border-radius:99px;padding:7px 9px;white-space:nowrap;font-size:11px;font-weight:800}
+.cloud-badge.ready{background:#ddf3eb;color:#166858}
+.cloud-badge.pending{background:#fff1df;color:#875913}
+.cloud-badge.error{background:#ffeaea;color:#a33b3b}
+.cloud-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}
+.cloud-actions button{min-width:0}
+.cloud-account{padding:9px 0 12px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.cloud-account strong{display:block;font-size:14px;overflow-wrap:anywhere;color:var(--navy)}
+.cloud-account small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.cloud-comparison{font-size:12px;line-height:1.5;margin:8px 0 12px}
+.cloud-comparison strong{color:var(--navy)}
+.cloud-comparison .data-rows{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.cloud-comparison .data-rows>div{border-radius:10px;background:var(--bg);border:1px solid var(--line);padding:10px}
+.cloud-comparison .data-rows b{display:block;font-size:13px;color:var(--teal)}
+.cloud-comparison .data-rows span{font-size:11px;color:var(--muted)}
+.cloud-comparison .cloud-warning{padding:10px;border:1px solid #f0d8ad;background:#fff6e8;border-radius:10px;color:#875913;margin-top:9px;font-size:12px}
+.cloud-comparison .cloud-success{padding:10px;border:1px solid #b5dbcf;background:#e7f6ef;border-radius:10px;color:#186953;margin-top:9px;font-size:12px}
+.cloud-actions button:disabled,#cloudCheck:disabled{opacity:.48;cursor:not-allowed}
+.textbtn{border:0;background:transparent;color:var(--muted);padding:11px 5px;font-size:13px;text-decoration:underline;cursor:pointer}
