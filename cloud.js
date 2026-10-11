@@ -101,7 +101,7 @@ async function connect(create){
  busy=true;issue='';screen('Connecting securely…');
  try{
    if(create){
-     const r=await call('/auth/v1/signup','POST',{email,password,options:{email_redirect_to:REDIRECT}},false);
+     const r=await call('/auth/v1/signup?redirect_to='+encodeURIComponent(REDIRECT),'POST',{email,password},false);
      if(r?.access_token){setSession(r);await cloudRead()}
      else {el('cloudPassword').value='';issue='Account created. Check email to confirm your address, then sign in from this app.'}
    }else{const r=await call('/auth/v1/token?grant_type=password','POST',{email,password},false);setSession(r);await cloudRead()}
