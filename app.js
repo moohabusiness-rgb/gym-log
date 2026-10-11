@@ -31,6 +31,7 @@ function persist(){
    try{localStorage.setItem(RECOVERY_KEY,json)}catch(e){console.warn('Extra local copy not saved',e)}
    scheduleDeviceRecovery(json);
    refreshStorageStatus();
+   if(window.GymCloud?.queueSync)window.GymCloud.queueSync();
    return true;
  }catch(e){
    data.updatedAt=previousTimestamp;
@@ -322,7 +323,7 @@ function startRest(seconds){clearInterval(clock);clockEnd=Date.now()+1000*second
 function showTimer(){const left=Math.max(0,Math.ceil((clockEnd-Date.now())/1000));$('timerLabel').textContent=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');if(left===0){clearInterval(clock);if(navigator.vibrate)navigator.vibrate(200);notify('Rest complete');$('timerBox').classList.add('hidden')}}
 $('stopTimer').addEventListener('click',()=>{clearInterval(clock);$('timerBox').classList.add('hidden')});
 $('export').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gym-log-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);notify('Backup file created')});
-$('import').addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const incoming=JSON.parse(r.result);if(!Array.isArray(incoming.sessions)||!incoming.tracker||!Array.isArray(incoming.tracker.weeks))throw Error('Bad format');if(!confirm('Replace your current workout history with this backup? Export your current data first if needed.'))return;const old=data;data=incoming;if(!persist()){data=old;return}data=load();renderHome();renderProgress();renderHistory();notify('Backup restored')}catch(err){alert('Not a valid Gym Log backup.')}};r.readAsText(f);e.target.value=''});
-$('reset').addEventListener('click',()=>{if(!confirm('Delete ALL saved workouts and tracker data on this device? This cannot be undone.'))return;data=defaults();if(persist()){renderHome();renderProgress();renderHistory();go('home');notify('Local data deleted')}});
+$('import').addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const incoming=JSON.parse(r.result);if(!Array.isArray(incoming.sessions)||!incoming.tracker||!Array.isArray(incoming.tracker.weeks))throw Error('Bad format');if(!confirm('Replace your current workout history with this backup? Export your current data first if needed.'))return;const old=data;window.GymCloud?.unlink?.();data=incoming;if(!persist()){data=old;return}data=load();renderHome();renderProgress();renderHistory();notify('Backup restored')}catch(err){alert('Not a valid Gym Log backup.')}};r.readAsText(f);e.target.value=''});
+$('reset').addEventListener('click',()=>{if(!confirm('Delete ALL saved workouts and tracker data on this device? Your private cloud backup, if present, will be kept. This cannot be undone locally.'))return;window.GymCloud?.unlink?.();data=defaults();if(persist()){renderHome();renderProgress();renderHistory();go('home');notify('Local data deleted; cloud unchanged')}});
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(err=>console.warn('Offline cache unavailable',err)));
 renderHome();fromHash();initializeDeviceRecovery();
