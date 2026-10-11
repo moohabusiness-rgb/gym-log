@@ -37,6 +37,12 @@
  <div class="panel"><h3>Strength snapshots</h3><p class="hint">Record the working weight used for your prescribed reps.</p><div id="strengthItems"></div><button id="saveStrength" class="secondary wide">Save strength values</button></div>
 </section>
 <section id="settings" class="view"><h2>Settings & backups</h2><div class="panel"><h3>Offline storage</h3><p>Workout records are saved on this device. Data does not automatically sync to other devices. Export a backup regularly so you don't lose your history if Safari storage is cleared or you change phones.</p><button class="secondary wide" id="export">Export JSON backup</button><label class="import">Import JSON backup<input id="import" type="file" accept=".json,application/json"></label></div>
+<div class="panel"><h3>Saved data & recovery</h3>
+<p class="hint">See whether this device can read your saved records. A second local recovery copy is maintained on supported browsers, but a downloaded backup is still important.</p>
+<div id="storageStatus" class="storage-status" aria-live="polite">Checking device storage…</div>
+<button id="verifyStorage" class="secondary wide">Check saved data</button>
+<button id="recoverBackup" class="mutedbtn wide hidden" style="margin-top:9px">Restore on-device recovery copy</button>
+<p class="hint" style="margin-top:12px">Safari Private Browsing, clearing website data, using a different browser, or device storage eviction can remove local records. A JSON backup is the safest way to preserve them without cloud sync.</p></div>
 <div class="panel"><h3>Install on iPhone</h3><p>Open the GitHub Pages URL in Safari, tap Share, and choose Add to Home Screen. Open Gym Log once online to cache it for offline use.</p></div>
 <div class="panel"><h3>Danger zone</h3><p>This erases all stored workout records on this device.</p><button class="danger wide" id="reset">Delete all local data</button></div></section>
 </main>
