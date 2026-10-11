@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#12314d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gym Log">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="./styles.css">
+<title>Gym Log — Upper / Lower</title>
+</head>
+<body>
+<header class="bar"><div><span class="eyebrow">UPPER / LOWER</span><h1>Gym Log</h1></div><span class="offline">Offline-first</span></header>
+<main>
+<section id="home" class="view active">
+ <div class="hero"><small>TODAY</small><h2>Train. Log. Progress.</h2><p>4 lifting days · 1 cardio day · 2 recovery days</p><strong id="thisWeek">0 / 4 workouts this week</strong></div>
+ <h2>Start a workout</h2><div id="workouts" class="workouts"></div>
+ <div class="stats"><div><b id="sessionsCount">0</b><small>Sessions</small></div><div><b id="trackerWeek">1</b><small>Tracker week</small></div><div><b id="latestWeight">—</b><small>Latest weight</small></div></div>
+ <div class="panel"><h3>Quick reminders</h3><p>3 sets for most exercises; 4 where indicated. Use the exact reps shown. Finish most sets with 1–2 clean reps in reserve. Add weight when all reps feel controlled.</p></div>
+</section>
+<section id="workout" class="view"><div class="head"><h2 id="workoutHeading">Workout</h2><button id="cancel" class="mutedbtn">Close</button></div>
+ <label>Workout date<input id="sessionDate" type="date"></label><div id="exerciseItems"></div>
+ <label>Session notes<textarea id="sessionNotes" rows="3" placeholder="Energy, recovery, anything noteworthy"></textarea></label>
+ <button id="saveSession" class="primary wide">Save completed workout</button></section>
+<section id="history" class="view"><h2>Workout history</h2><p class="hint">All records stay on this phone unless you export a backup.</p><div id="historyItems"></div></section>
+<section id="progress" class="view"><h2>12-week progress</h2><p class="hint">Check in once weekly and compare trends, not daily fluctuations.</p>
+ <div class="panel"><div class="fields"><label>Start date<input id="startDate" type="date"></label><label>Start weight (kg)<input id="startWeight" type="number" step="0.1" inputmode="decimal"></label><label>Start waist (cm)<input id="startWaist" type="number" step="0.1" inputmode="decimal"></label></div><button id="saveStart" class="secondary wide">Save starting values</button></div>
+ <div class="panel"><h3>Weight trend</h3><canvas id="weightChart" width="640" height="240"></canvas></div>
+ <div class="panel"><h3>Waist trend</h3><canvas id="waistChart" width="640" height="240"></canvas></div>
+ <div id="weeklyItems"></div>
+ <div class="panel"><h3>Strength snapshots</h3><p class="hint">Record the working weight used for your prescribed reps.</p><div id="strengthItems"></div><button id="saveStrength" class="secondary wide">Save strength values</button></div>
+</section>
+<section id="settings" class="view"><h2>Settings & backups</h2><div class="panel"><h3>Offline storage</h3><p>Workout records are saved on this device. Data does not automatically sync to other devices. Export a backup regularly so you don't lose your history if Safari storage is cleared or you change phones.</p><button class="secondary wide" id="export">Export JSON backup</button><label class="import">Import JSON backup<input id="import" type="file" accept=".json,application/json"></label></div>
+<div class="panel"><h3>Install on iPhone</h3><p>Open the GitHub Pages URL in Safari, tap Share, and choose Add to Home Screen. Open Gym Log once online to cache it for offline use.</p></div>
+<div class="panel"><h3>Danger zone</h3><p>This erases all stored workout records on this device.</p><button class="danger wide" id="reset">Delete all local data</button></div></section>
+</main>
+<nav class="tabs" aria-label="Main navigation"><a href="#home" data-tab="home" class="selected"><span>⌂</span>Home</a><a href="#history" data-tab="history"><span>◷</span>History</a><a href="#progress" data-tab="progress"><span>↗</span>Progress</a><a href="#settings" data-tab="settings"><span>⚙</span>Settings</a></nav>
+<div class="timer hidden" id="timerBox"><div><strong id="timerLabel">01:30</strong><small>Rest timer</small></div><button id="stopTimer">Cancel</button></div>
+<div class="toast hidden" id="toast" role="status"></div>
+<script defer src="./app.js"></script>
+</body></html>
