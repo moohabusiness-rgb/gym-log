@@ -27,3 +27,7 @@ Use **Settings → Export JSON backup** regularly and keep the backup in a safe 
 
 ## Development
 Serve these files from any local HTTP server (e.g., `python -m http.server 8000`) for browser testing. PWA installation and service workers require HTTPS or localhost.
+
+## Deployment status
+
+The GitHub Pages deployment runs automatically when the `main` branch receives a new commit. Review the **Actions → Deploy Gym Log** workflow to confirm a successful publication before installing the app.
