@@ -129,6 +129,21 @@ function scheduleDeviceRecovery(json){
 }
 async function initializeDeviceRecovery(){
  const startWrites=storageWrites;
+ // Heal a missing primary record from the immediate local recovery mirror first.
+ if(!safeCurrentRecord()){
+   try{
+     const mirrored=localStorage.getItem(RECOVERY_KEY);
+     const old=mirrored&&JSON.parse(mirrored);
+     if(old&&Array.isArray(old.sessions)&&old.tracker&&counts(old).score>0&&storageWrites===startWrites){
+       data=old;
+       if(persist()){
+         renderHome();
+         if(document.getElementById('progress').classList.contains('active'))renderProgress();
+         notify('Recovered previous locally saved records');
+       }
+     }
+   }catch(e){console.warn('Local recovery mirror unreadable',e)}
+ }
  const saved=await readDeviceRecovery();
  if(saved){
    recoverySnapshot=saved;
