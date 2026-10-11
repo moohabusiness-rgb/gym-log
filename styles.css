@@ -36,3 +36,10 @@ select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:1
 .progress-summary .summary-note{font-size:12px;margin-top:7px;color:var(--muted);line-height:1.5}
 .detail-heading{margin:26px 0 5px}
 @media(max-width:350px){.progress-summary .summary-stats{grid-template-columns:1fr}}
+
+/* Local storage and backup status */
+.storage-status{border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:12px 14px;color:var(--navy);font-size:13px;line-height:1.55;margin:9px 0 12px}
+.storage-status strong{display:block;font-size:14px;color:var(--navy);margin-bottom:3px}
+.storage-status.good{background:var(--mint);border-color:#b9dcd4}
+.storage-status.warning{background:#fff6e8;border-color:#eed4ab}
+.storage-status small{display:block;font-size:11px;color:var(--muted);margin-top:6px}
