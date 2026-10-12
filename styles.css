@@ -67,3 +67,14 @@ select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:1
 .cloud-comparison .cloud-success{padding:10px;border:1px solid #b5dbcf;background:#e7f6ef;border-radius:10px;color:#186953;margin-top:9px;font-size:12px}
 .cloud-actions button:disabled,#cloudCheck:disabled{opacity:.48;cursor:not-allowed}
 .textbtn{border:0;background:transparent;color:var(--muted);padding:11px 5px;font-size:13px;text-decoration:underline;cursor:pointer}
+
+/* Editing a logged workout */
+.history-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+.history-actions button{flex:1;min-width:135px}
+.history-editor{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+.history-editor h3{margin:0 0 5px}
+.edit-exercise{border:1px solid var(--line);border-radius:11px;padding:10px;margin:9px 0;background:var(--bg)}
+.edit-exercise strong{display:block;color:var(--navy);font-size:13px}
+.edit-sets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.edit-sets label{font-size:11px;margin:8px 0 2px}
+.edit-sets input{padding:10px 5px;text-align:center}
