@@ -318,11 +318,62 @@ $('saveCheckin').addEventListener('click',()=>{
  renderProgress();renderHome();notify('Week '+(i+1)+' check-in saved');
 });
 
+function dashboardMetric(label,latest,unit,delta,comparison,lowerBetter){
+ if(latest===null)return '<div class="dashboard-metric"><small>'+label+'</small><strong>—</strong><span>Not recorded yet</span></div>';
+ const change=delta===null?'Awaiting comparison':(delta>0?'+':'')+delta.toFixed(unit==='steps'||unit==='min'?'0':'1')+' '+unit+' vs '+comparison;
+ const favorable=delta===null?'neutral':delta===0?'neutral':(lowerBetter?delta<0:delta>0)?'good':'neutral';
+ return '<div class="dashboard-metric"><small>'+label+'</small><strong>'+esc(unit==='steps'?Math.round(latest).toLocaleString():unit==='min'||unit==='/4'?String(latest):latest.toFixed(1))+' '+(unit==='steps'?'steps':unit)+'</strong><span class="'+favorable+'">'+esc(change)+'</span></div>';
+}
+function recordedWeeks(){
+ return data.tracker.weeks.map((w,i)=>({week:i+1,...w})).filter(w=>
+  validMeasure(w.weight)!==null||validMeasure(w.waist)!==null||
+  (w.steps!==''&&w.steps!=null)||(w.workouts!==''&&w.workouts!=null)||(w.cardio!==''&&w.cardio!=null));
+}
+function metricNum(v){if(v==null||v==='')return null;const n=Number(v);return Number.isFinite(n)&&n>=0?n:null}
+function renderDashboard(){
+ const t=data.tracker,ws=recordedWeeks();
+ const last=(key,valid)=>ws.filter(w=>valid(w[key])!==null).at(-1)||null;
+ const weight=last('weight',validMeasure),waist=last('waist',validMeasure);
+ const steps=last('steps',metricNum),workouts=last('workouts',metricNum),cardio=last('cardio',metricNum);
+ const baselineWeight=validMeasure(t.startWeight),baselineWaist=validMeasure(t.startWaist);
+ const previous=(r,key,valid)=>r?ws.filter(w=>w.week<r.week&&valid(w[key])!==null).at(-1):null;
+ const stepPrev=previous(steps,'steps',metricNum),workoutPrev=previous(workouts,'workouts',metricNum),cardioPrev=previous(cardio,'cardio',metricNum);
+ $('dashboardOverview').innerHTML='<p class="dashboard-intro">'+(ws.length?'Latest logged: Week '+ws.at(-1).week+' · '+ws.length+' week(s) with records':'Save your starting measurements and first weekly check-in to see results here')+'</p>'+
+ '<div class="dashboard-grid">'+
+ dashboardMetric('Weight',weight?validMeasure(weight.weight):null,'kg',weight&&baselineWeight!==null?validMeasure(weight.weight)-baselineWeight:null,'start',true)+
+ dashboardMetric('Waist',waist?validMeasure(waist.waist):null,'cm',waist&&baselineWaist!==null?validMeasure(waist.waist)-baselineWaist:null,'start',true)+
+ dashboardMetric('Workouts',workouts?metricNum(workouts.workouts):null,'/4',workouts&&workoutPrev?metricNum(workouts.workouts)-metricNum(workoutPrev.workouts):null,'previous week',false)+
+ dashboardMetric('Daily steps',steps?metricNum(steps.steps):null,'steps',steps&&stepPrev?metricNum(steps.steps)-metricNum(stepPrev.steps):null,'previous week',false)+
+ dashboardMetric('Cardio',cardio?metricNum(cardio.cardio):null,'min',cardio&&cardioPrev?metricNum(cardio.cardio)-metricNum(cardioPrev.cardio):null,'previous week',false)+
+ '</div><p class="dashboard-guidance">A steady waist/weight trend and consistent activity matter more than hitting a new record every week. Rest and recovery count, too.</p>';
+ const full=data.tracker.weeks;
+ for(const [id,key,unit,maxTarget] of [['workoutTrend','workouts','/4',4],['stepsTrend','steps','steps',null],['cardioTrend','cardio','min',null]]){
+  const rows=full.map((w,i)=>({week:i+1,value:metricNum(w[key])})).filter(w=>w.value!==null);
+  const el=$(id);
+  if(!rows.length){el.innerHTML='<p class="hint">No '+(key==='workouts'?'workout totals':key==='steps'?'step averages':'cardio minutes')+' recorded yet. Add them in Weekly records.</p>';continue}
+  const max=Math.max(maxTarget||0,...rows.map(w=>w.value),1);
+  el.innerHTML='<div class="activity-bars">'+rows.map(w=>'<div class="activity-col"><div class="activity-value">'+(key==='steps'?Math.round(w.value).toLocaleString():w.value)+'</div><div class="activity-rail"><div class="activity-fill" style="height:'+Math.max(2,Math.min(100,100*w.value/max))+'%"></div></div><small>W'+w.week+'</small></div>').join('')+'</div>';
+ }
+ const sample=ws.filter(w=>validMeasure(w.weight)!==null);
+ const waistSample=ws.filter(w=>validMeasure(w.waist)!==null);
+ let summary='Four-week trend: Log at least four weekly weigh-ins or waist measurements to see a meaningful comparison.';
+ if(sample.length>=4||waistSample.length>=4){
+  const details=[];
+  for(const [name,rows,key,unit] of [['Weight',sample,'weight','kg'],['Waist',waistSample,'waist','cm']]){
+   if(rows.length<4)continue;
+   const recent=rows.slice(-4),delta=Number(recent.at(-1)[key])-Number(recent[0][key]);
+   details.push(name+' '+(Math.abs(delta)<0.05?'stable':delta<0?'down ':'up ')+(Math.abs(delta)<0.05?'':Math.abs(delta).toFixed(1)+' '+unit)+' across the latest four recorded weeks');
+  }
+  summary='Four-week trend: '+details.join('; ')+'. Look for a sustainable overall direction, not a perfect week-by-week decline.';
+ }
+ $('dashboardFourWeek').textContent=summary;
+}
+
 function renderProgress(){
  const t=data.tracker;$('startDate').value=t.startDate||'';$('startWeight').value=t.startWeight||'';$('startWaist').value=t.startWaist||'';
  $('checkinWeek').innerHTML=Array.from({length:12},(_,i)=>'<option value="'+(i+1)+'">Week '+(i+1)+'</option>').join('');
  $('checkinWeek').value=String(trackerWeek());
- fillQuickCheckin();showBaseline();showProgressSummary();
+ fillQuickCheckin();showBaseline();showProgressSummary();renderDashboard();
  $('weeklyItems').innerHTML=t.weeks.map((w,i)=>'<article class="week-card"><h3>Week '+(i+1)+'</h3><div class="week-grid">'+
  ['ending','weight','waist','steps','workouts','cardio','notes'].map(k=>{const labels={ending:'Week ending',weight:'Weight kg',waist:'Waist cm',steps:'Average daily steps',workouts:'Workouts completed /4',cardio:'Cardio minutes',notes:'Notes'};const type=k==='ending'?'date':k==='notes'?'text':'number';const step=k==='weight'||k==='waist'?'step="0.1"':'step="1"';return '<label class="'+(k==='notes'?'span2':'')+'">'+labels[k]+'<input data-week="'+i+'" data-field="'+k+'" type="'+type+'" '+step+' value="'+esc(w[k]||'')+'"></label>'}).join('')+
  '</div><button class="secondary wide" data-save-week="'+i+'">Save week '+(i+1)+'</button></article>').join('');
@@ -330,7 +381,7 @@ function renderProgress(){
  const i=Number(b.dataset.saveWeek),previous={...t.weeks[i]};
  document.querySelectorAll('[data-week="'+i+'"]').forEach(el=>t.weeks[i][el.dataset.field]=el.value);
  if(!persist()){t.weeks[i]=previous;return}
- showProgressSummary();drawCharts();renderHome();notify('Week '+(i+1)+' saved');
+ showProgressSummary();drawCharts();renderDashboard();renderHome();notify('Week '+(i+1)+' saved');
 }));
  $('strengthItems').innerHTML=STRENGTH.map(name=>{const vals=t.strength[name]||{};return '<div class="strength-row"><strong>'+name+'</strong><div class="strength-grid">'+['start','w4','w8','w12'].map((k,j)=>'<label>'+['Start','Week 4','Week 8','Week 12'][j]+'<input type="number" min="0" step="0.5" inputmode="decimal" data-strength="'+esc(name)+'" data-col="'+k+'" value="'+esc(vals[k]||'')+'"></label>').join('')+'</div></div>'}).join('');
  drawCharts();
@@ -341,7 +392,7 @@ $('saveStart').addEventListener('click',()=>{
  if(weight===null&&waist===null){notify('Enter a starting weight or waist');return}
  t.startDate=$('startDate').value;t.startWeight=weight!==null?String(weight):'';t.startWaist=waist!==null?String(waist):'';
  if(!persist()){Object.assign(t,old);return}
- showBaseline();showProgressSummary();drawCharts();renderHome();notify('Starting point saved');
+ showBaseline();showProgressSummary();drawCharts();renderDashboard();renderHome();notify('Starting point saved');
 });
 $('saveStrength').addEventListener('click',()=>{document.querySelectorAll('[data-strength]').forEach(inp=>{const name=inp.dataset.strength;data.tracker.strength[name]??={};data.tracker.strength[name][inp.dataset.col]=inp.value});if(persist())notify('Strength snapshot saved')});
 function drawCharts(){
