@@ -211,13 +211,57 @@ $('saveSession').addEventListener('click',()=>{
  data.sessions.push(obj);if(!persist()){data.sessions.pop();return}activeWorkout=null;notify('Workout saved');go('home');
 });
 function renderHistory(){
- const list=$('historyItems');const sorted=[...data.sessions].sort((a,b)=>b.date.localeCompare(a.date)||(b.id||0)-(a.id||0));
+ const list=$('historyItems');
+ const sorted=[...data.sessions].sort((a,b)=>b.date.localeCompare(a.date)||(b.id||0)-(a.id||0));
  if(!sorted.length){list.innerHTML='<div class="empty">No workouts yet. Your first session will appear here.</div>';return}
  list.innerHTML=sorted.map(s=>{
- const exercises=(s.exercises||[]).map(e=>'<div class="history-ex"><b>'+esc(e.name)+'</b>: '+(e.sets||[]).map(x=>esc(x.weight?x.weight+' kg':'—')).join(' / ')+'</div>').join('');
- return '<article class="record"><div class="record-header"><h3>'+esc(s.workoutName)+'</h3><small>'+esc(fmt(s.date))+'</small></div>'+(s.notes?'<p class="hint">'+esc(s.notes)+'</p>':'')+'<details><summary>View logged sets</summary>'+exercises+'</details><button class="danger" data-delete="'+s.id+'">Delete workout</button></article>'
+  const exercises=(s.exercises||[]).map(e=>'<div class="history-ex"><b>'+esc(e.name)+'</b>: '+(e.sets||[]).map(x=>esc(x.weight!==''&&x.weight!=null?x.weight+' kg':'—')).join(' / ')+'</div>').join('');
+  return '<article class="record"><div class="record-header"><h3>'+esc(s.workoutName)+'</h3><small>'+esc(fmt(s.date))+'</small></div>'+
+   (s.notes?'<p class="hint">'+esc(s.notes)+'</p>':'')+
+   '<details><summary>View logged sets</summary>'+exercises+'</details>'+
+   '<div class="history-actions"><button class="secondary" data-edit="'+esc(s.id)+'">Edit workout</button><button class="danger" data-delete="'+esc(s.id)+'">Delete workout</button></div>'+
+   '<div class="history-editor hidden" id="edit-'+esc(s.id)+'"></div></article>';
  }).join('');
- document.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>{if(confirm('Permanently delete this workout?')){data.sessions=data.sessions.filter(s=>String(s.id)!==b.dataset.delete);persist();renderHistory();renderHome()}}));
+ document.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openWorkoutEditor(b.dataset.edit)));
+ document.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>{
+  if(!confirm('Permanently delete this workout?'))return;
+  const old=data.sessions;
+  data.sessions=old.filter(s=>String(s.id)!==b.dataset.delete);
+  if(!persist()){data.sessions=old;return}
+  renderHistory();renderHome();
+ }));
+}
+function openWorkoutEditor(id){
+ const session=data.sessions.find(s=>String(s.id)===String(id));
+ const box=$('edit-'+id);
+ if(!session||!box)return;
+ if(!box.classList.contains('hidden')){box.classList.add('hidden');box.innerHTML='';return}
+ document.querySelectorAll('.history-editor').forEach(x=>{x.classList.add('hidden');x.innerHTML=''});
+ box.classList.remove('hidden');
+ box.innerHTML='<h3>Edit '+esc(session.workoutName)+'</h3>'+
+  '<p class="hint">For barbells, enter the total weight (including the bar). Dumbbells: weight of one dumbbell. Changes keep the original session.</p>'+
+  '<label>Workout date<input type="date" data-edit-date value="'+esc(session.date||'')+'"></label>'+
+  (session.exercises||[]).map((e,i)=>'<div class="edit-exercise"><strong>'+esc(e.name)+'</strong><div class="edit-sets">'+
+   (e.sets||[]).map((set,j)=>'<label>Set '+(j+1)+' (kg)<input type="number" min="0" step="0.5" inputmode="decimal" data-edit-ex="'+i+'" data-edit-set="'+j+'" value="'+esc(set.weight??'')+'"></label>').join('')+
+   '</div></div>').join('')+
+  '<label>Workout notes<textarea rows="2" data-edit-notes>'+esc(session.notes||'')+'</textarea></label>'+
+  '<div class="history-actions"><button class="primary" data-edit-save>Save corrections</button><button class="mutedbtn" data-edit-cancel>Cancel</button></div>';
+ box.querySelector('[data-edit-cancel]').addEventListener('click',()=>{box.classList.add('hidden');box.innerHTML=''});
+ box.querySelector('[data-edit-save]').addEventListener('click',()=>{
+  const date=box.querySelector('[data-edit-date]').value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){notify('Enter a valid workout date');return}
+  const edits=[...box.querySelectorAll('[data-edit-ex]')];
+  if(edits.some(input=>input.value!==''&&(!Number.isFinite(Number(input.value))||Number(input.value)<0))){notify('Enter valid nonnegative weights');return}
+  const previous=JSON.parse(JSON.stringify(session));
+  session.date=date;
+  session.notes=box.querySelector('[data-edit-notes]').value;
+  for(const input of edits){
+    const i=Number(input.dataset.editEx),j=Number(input.dataset.editSet);
+    session.exercises[i].sets[j].weight=input.value;
+  }
+  if(!persist()){Object.assign(session,previous);return}
+  renderHistory();renderHome();notify('Workout corrections saved');
+ });
 }
 
 function validMeasure(raw){if(raw===undefined||raw===null||raw==='')return null;const n=Number(raw);return Number.isFinite(n)&&n>0?n:null}
