@@ -184,7 +184,7 @@ function fromHash(){navigate(validTab((location.hash||'#home').slice(1)))}
 window.addEventListener('hashchange',fromHash);
 document.querySelectorAll('.tabs [data-tab]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const t=a.dataset.tab;if(location.hash==='#'+t)navigate(t);else location.hash=t}));
 function go(tab){if(location.hash==='#'+tab)navigate(tab);else location.hash=tab}
-function sessionsThisWeek(){const d=new Date(),start=new Date(d.getFullYear(),d.getMonth(),d.getDate());start.setDate(start.getDate()-((start.getDay()+6)%7));const startDay=[start.getFullYear(),String(start.getMonth()+1).padStart(2,'0'),String(start.getDate()).padStart(2,'0')].join('-');return data.sessions.filter(s=>s.date>=startDay).length}
+function sessionsThisWeek(){const d=new Date(),start=new Date(d.getFullYear(),d.getMonth(),d.getDate());start.setDate(start.getDate()-start.getDay());const startDay=[start.getFullYear(),String(start.getMonth()+1).padStart(2,'0'),String(start.getDate()).padStart(2,'0')].join('-');return data.sessions.filter(s=>s.date>=startDay).length}
 function trackerWeek(){if(!data.tracker.startDate)return 1;const start=new Date(data.tracker.startDate+'T12:00:00').getTime();if(!Number.isFinite(start))return 1;return Math.min(12,Math.max(1,Math.floor((Date.now()-start)/604800000)))}
 function renderHome(){
  $('workouts').innerHTML=Object.entries(PLAN).map(([key,p])=>'<button class="workout-choice" data-workout="'+key+'"><b>'+p.name+'</b><small>'+p.day+' · '+p.ex.length+' exercises</small><span>Start workout →</span></button>').join('');
