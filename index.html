@@ -26,14 +26,21 @@
  <label>Session notes<textarea id="sessionNotes" rows="3" placeholder="Energy, recovery, anything noteworthy"></textarea></label>
  <button id="saveSession" class="primary wide">Save completed workout</button></section>
 <section id="history" class="view"><h2>Workout history</h2><p class="hint">All records stay on this phone unless you export a backup.</p><div id="historyItems"></div></section>
-<section id="progress" class="view"><h2>12-week progress</h2><p class="hint">Check in once weekly and compare trends, not daily fluctuations.</p>
+<section id="progress" class="view"><h2>12-week progress</h2><p class="hint">Your results, consistency, and trends — based on your saved weekly records.</p>
+ <h3 class="progress-section-heading">Overview</h3>
+ <div id="dashboardOverview" class="dashboard-overview" aria-live="polite"></div>
+ <h3 class="progress-section-heading">Trends</h3><p class="hint">Follow the direction across multiple weeks, not individual fluctuations. Each chart uses its own units.</p>
+ <div class="panel"><h3>Weight trend <small>kg · gradual downward trend</small></h3><canvas id="weightChart" width="640" height="240"></canvas></div>
+ <div class="panel"><h3>Waist trend <small>cm · gradual downward trend</small></h3><canvas id="waistChart" width="640" height="240"></canvas></div>
+ <div class="panel"><h3>Completed workouts <small>out of 4 planned per week</small></h3><div id="workoutTrend" class="activity-chart"></div></div>
+ <div class="panel"><h3>Average daily steps <small>steps per day</small></h3><div id="stepsTrend" class="activity-chart"></div></div>
+ <div class="panel"><h3>Cardio minutes <small>weekly total</small></h3><div id="cardioTrend" class="activity-chart"></div></div>
+ <div id="dashboardFourWeek" class="trend-summary" aria-live="polite"></div><h3 class="progress-section-heading">Weekly records</h3><p class="hint">Update measurements here, or expand a week's detailed record below.</p>
  <div class="panel"><h3>Your starting point</h3><p class="hint">Baseline = Week 0. Save it once; it remains visible below.</p><div class="fields"><label>Start date<input id="startDate" type="date"></label><label>Start weight (kg)<input id="startWeight" type="number" step="0.1" inputmode="decimal"></label><label>Start waist (cm)<input id="startWaist" type="number" step="0.1" inputmode="decimal"></label></div><button id="saveStart" class="secondary wide">Save starting values</button><div id="baselineSummary" class="saved-summary" aria-live="polite"></div></div>
  <div class="panel checkin-panel"><h3>Weekly check-in</h3><p class="hint">Enter your newest measurements here. Week 1 is the first check-in after your starting point.</p>
  <div class="checkin-grid"><label>Week<select id="checkinWeek" aria-label="Week to save"></select></label><label>Date<input id="checkinDate" type="date"></label><label>Weight (kg)<input id="checkinWeight" type="number" step="0.1" inputmode="decimal" placeholder="e.g. 108.5"></label><label>Waist (cm)<input id="checkinWaist" type="number" step="0.1" inputmode="decimal" placeholder="e.g. 112.3"></label></div><button id="saveCheckin" class="primary wide">Save weekly check-in</button>
  <div id="progressSummary" class="progress-summary" aria-live="polite"></div></div>
- <div class="panel"><h3>Weight trend</h3><canvas id="weightChart" width="640" height="240"></canvas></div>
- <div class="panel"><h3>Waist trend</h3><canvas id="waistChart" width="640" height="240"></canvas></div>
- <h3 class="detail-heading">Detailed weekly records</h3><p class="hint">Optional: record steps, workouts, cardio, and notes for each week below.</p><div id="weeklyItems"></div>
+ <details class="weekly-records"><summary>Show / edit all 12 weekly records</summary><p class="hint">Record steps, workouts, cardio, notes, and corrections to any week.</p><div id="weeklyItems"></div></details>
  <div class="panel"><h3>Strength snapshots</h3><p class="hint">Record the working weight used for your prescribed reps.</p><div id="strengthItems"></div><button id="saveStrength" class="secondary wide">Save strength values</button></div>
 </section>
 <section id="settings" class="view"><h2>Settings & backups</h2>
