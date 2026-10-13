@@ -1,5 +1,5 @@
 /* Gym Log offline-first app shell. Workout data stays in localStorage. */
-const CACHE='gym-log-offline-v9';
+const CACHE='gym-log-offline-v10';
 const APP_SHELL=['./','./index.html','./styles.css','./app.js','./cloud.js','./manifest.webmanifest','./icon.svg','./icon-192.png'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
