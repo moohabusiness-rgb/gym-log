@@ -272,7 +272,7 @@ function showBaseline(){
  $('baselineSummary').innerHTML='<strong>✓ Starting point saved on this device</strong>'+
  '<div class="saved-values"><span>Date: '+esc(t.startDate?fmt(t.startDate):'Not set')+'</span>'+
  '<span>Weight: '+(weight!==null?weight.toFixed(1)+' kg':'Not set')+'</span>'+
- '<span>Waist: '+(waist!==null?waist.toFixed(1)+' cm':'Not set')+'</span></div>'+
+ '<span>Abdomen (navel level): '+(waist!==null?waist.toFixed(1)+' cm':'Not set')+'</span></div>'+
  '<small>Baseline / Week 0. You can edit these fields and save again if needed.</small>';
 }
 function latestCheckin(){
@@ -285,7 +285,7 @@ function showProgressSummary(){
  const bw=validMeasure(t.startWeight),bc=validMeasure(t.startWaist);
  const measures=[
    ['Weight',latest.weight,bw,'kg'],
-   ['Waist',latest.waist,bc,'cm']
+   ['Abdomen (navel level)',latest.waist,bc,'cm']
  ];
  const stats=measures.map(([label,value,base,unit])=>{
    const diff=(value!==null&&base!==null)?value-base:null;
@@ -310,7 +310,7 @@ $('saveCheckin').addEventListener('click',()=>{
  const i=Number($('checkinWeek').value)-1;
  if(!Number.isInteger(i)||i<0||i>=12)return notify('Select a valid week');
  const weight=validMeasure($('checkinWeight').value),waist=validMeasure($('checkinWaist').value);
- if(weight===null&&waist===null)return notify('Enter your weight or waist measurement');
+ if(weight===null&&waist===null)return notify('Enter your weight or abdomen measurement');
  const date=$('checkinDate').value||today();
  const previous={...data.tracker.weeks[i]};
  data.tracker.weeks[i]={...previous,ending:date,weight:weight!==null?String(weight):previous.weight,waist:waist!==null?String(waist):previous.waist};
@@ -341,11 +341,11 @@ function renderDashboard(){
  $('dashboardOverview').innerHTML='<p class="dashboard-intro">'+(ws.length?'Latest logged: Week '+ws.at(-1).week+' · '+ws.length+' week(s) with records':'Save your starting measurements and first weekly check-in to see results here')+'</p>'+
  '<div class="dashboard-grid">'+
  dashboardMetric('Weight',weight?validMeasure(weight.weight):null,'kg',weight&&baselineWeight!==null?validMeasure(weight.weight)-baselineWeight:null,'start',true)+
- dashboardMetric('Waist',waist?validMeasure(waist.waist):null,'cm',waist&&baselineWaist!==null?validMeasure(waist.waist)-baselineWaist:null,'start',true)+
+ dashboardMetric('Abdomen (navel level)',waist?validMeasure(waist.waist):null,'cm',waist&&baselineWaist!==null?validMeasure(waist.waist)-baselineWaist:null,'start',true)+
  dashboardMetric('Workouts',workouts?metricNum(workouts.workouts):null,'/4',workouts&&workoutPrev?metricNum(workouts.workouts)-metricNum(workoutPrev.workouts):null,'previous week',false)+
  dashboardMetric('Daily steps',steps?metricNum(steps.steps):null,'steps',steps&&stepPrev?metricNum(steps.steps)-metricNum(stepPrev.steps):null,'previous week',false)+
  dashboardMetric('Cardio',cardio?metricNum(cardio.cardio):null,'min',cardio&&cardioPrev?metricNum(cardio.cardio)-metricNum(cardioPrev.cardio):null,'previous week',false)+
- '</div><p class="dashboard-guidance">A steady waist/weight trend and consistent activity matter more than hitting a new record every week. Rest and recovery count, too.</p>';
+ '</div><p class="dashboard-guidance">A steady abdomen/weight trend and consistent activity matter more than hitting a new record every week. Rest and recovery count, too.</p>';
  const full=data.tracker.weeks;
  for(const [id,key,unit,maxTarget] of [['workoutTrend','workouts','/4',4],['stepsTrend','steps','steps',null],['cardioTrend','cardio','min',null]]){
   const rows=full.map((w,i)=>({week:i+1,value:metricNum(w[key])})).filter(w=>w.value!==null);
@@ -356,10 +356,10 @@ function renderDashboard(){
  }
  const sample=ws.filter(w=>validMeasure(w.weight)!==null);
  const waistSample=ws.filter(w=>validMeasure(w.waist)!==null);
- let summary='Four-week trend: Log at least four weekly weigh-ins or waist measurements to see a meaningful comparison.';
+ let summary='Four-week trend: Log at least four weekly weigh-ins or abdomen measurements to see a meaningful comparison.';
  if(sample.length>=4||waistSample.length>=4){
   const details=[];
-  for(const [name,rows,key,unit] of [['Weight',sample,'weight','kg'],['Waist',waistSample,'waist','cm']]){
+  for(const [name,rows,key,unit] of [['Weight',sample,'weight','kg'],['Abdomen (navel level)',waistSample,'waist','cm']]){
    if(rows.length<4)continue;
    const recent=rows.slice(-4),delta=Number(recent.at(-1)[key])-Number(recent[0][key]);
    details.push(name+' '+(Math.abs(delta)<0.05?'stable':delta<0?'down ':'up ')+(Math.abs(delta)<0.05?'':Math.abs(delta).toFixed(1)+' '+unit)+' across the latest four recorded weeks');
@@ -375,7 +375,7 @@ function renderProgress(){
  $('checkinWeek').value=String(trackerWeek());
  fillQuickCheckin();showBaseline();showProgressSummary();renderDashboard();
  $('weeklyItems').innerHTML=t.weeks.map((w,i)=>'<article class="week-card"><h3>Week '+(i+1)+'</h3><div class="week-grid">'+
- ['ending','weight','waist','steps','workouts','cardio','notes'].map(k=>{const labels={ending:'Week ending',weight:'Weight kg',waist:'Waist cm',steps:'Average daily steps',workouts:'Workouts completed /4',cardio:'Cardio minutes',notes:'Notes'};const type=k==='ending'?'date':k==='notes'?'text':'number';const step=k==='weight'||k==='waist'?'step="0.1"':'step="1"';return '<label class="'+(k==='notes'?'span2':'')+'">'+labels[k]+'<input data-week="'+i+'" data-field="'+k+'" type="'+type+'" '+step+' value="'+esc(w[k]||'')+'"></label>'}).join('')+
+ ['ending','weight','waist','steps','workouts','cardio','notes'].map(k=>{const labels={ending:'Week ending',weight:'Weight kg',waist:'Abdomen (navel level), cm',steps:'Average daily steps',workouts:'Workouts completed /4',cardio:'Cardio minutes',notes:'Notes'};const type=k==='ending'?'date':k==='notes'?'text':'number';const step=k==='weight'||k==='waist'?'step="0.1"':'step="1"';return '<label class="'+(k==='notes'?'span2':'')+'">'+labels[k]+'<input data-week="'+i+'" data-field="'+k+'" type="'+type+'" '+step+' value="'+esc(w[k]||'')+'"></label>'}).join('')+
  '</div><button class="secondary wide" data-save-week="'+i+'">Save week '+(i+1)+'</button></article>').join('');
  document.querySelectorAll('[data-save-week]').forEach(b=>b.addEventListener('click',()=>{
  const i=Number(b.dataset.saveWeek),previous={...t.weeks[i]};
