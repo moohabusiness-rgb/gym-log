@@ -102,3 +102,18 @@ select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:1
 #progress canvas{max-width:100%;height:auto}
 #progress .panel h3 small{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:5px}
 @media(max-width:360px){.dashboard-metric strong{font-size:19px}}
+
+/* Compact, accessible activity tabs; no changes to saved workout data */
+.activity-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;background:#eaf0f3;border-radius:12px;padding:4px;margin:13px 0}
+.activity-tab{border:0;background:transparent;color:var(--muted);border-radius:9px;padding:10px 5px;min-height:42px;font-size:13px;font-weight:700;cursor:pointer}
+.activity-tab.selected{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(19,52,81,.12)}
+.activity-tab:focus-visible{outline:3px solid #20857f;outline-offset:2px}
+.activity-panel .activity-bars{min-height:122px;gap:7px;margin-top:9px;padding-top:4px}
+.activity-panel .activity-rail{height:82px}
+.activity-panel .activity-col{min-width:39px;max-width:62px}
+.activity-panel .activity-value{font-size:10px}
+.activity-headline{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.activity-headline strong{display:block;color:var(--navy);font-size:15px}
+.activity-headline small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.activity-headline>span{font-size:11px;color:var(--muted);max-width:185px;line-height:1.4}
+.activity-context,.activity-empty{font-size:12px;color:var(--muted);line-height:1.5;margin:8px 0 0}
