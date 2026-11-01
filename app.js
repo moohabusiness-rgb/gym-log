@@ -330,6 +330,45 @@ function recordedWeeks(){
   (w.steps!==''&&w.steps!=null)||(w.workouts!==''&&w.workouts!=null)||(w.cardio!==''&&w.cardio!=null));
 }
 function metricNum(v){if(v==null||v==='')return null;const n=Number(v);return Number.isFinite(n)&&n>=0?n:null}
+let activeActivityTab='workouts';
+function renderActivityTabs(){
+ const definitions={
+  workouts:{label:'Workouts',unit:'sessions',description:'Weekly sessions completed · target 4',format:v=>String(v),latest:v=>v+' / 4 workouts'},
+  steps:{label:'Steps',unit:'steps/day',description:'Average daily steps each week',format:v=>Math.round(v).toLocaleString(),latest:v=>Math.round(v).toLocaleString()+' steps/day'},
+  cardio:{label:'Cardio',unit:'minutes',description:'Total cardio minutes each week',format:v=>String(v),latest:v=>v+' minutes'}
+ };
+ const key=Object.hasOwn(definitions,activeActivityTab)?activeActivityTab:'workouts',def=definitions[key];
+ document.querySelectorAll('[data-activity-tab]').forEach(button=>{
+  const selected=button.dataset.activityTab===key;
+  button.classList.toggle('selected',selected);
+  button.setAttribute('aria-selected',String(selected));
+  button.tabIndex=selected?0:-1;
+  button.onclick=()=>{activeActivityTab=button.dataset.activityTab;renderActivityTabs()};
+  button.onkeydown=e=>{
+   if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;
+   e.preventDefault();
+   const tabs=['workouts','steps','cardio'],i=tabs.indexOf(button.dataset.activityTab);
+   activeActivityTab=tabs[(i+(e.key==='ArrowRight'?1:2))%3];
+   renderActivityTabs();
+   document.querySelector('[data-activity-tab="'+activeActivityTab+'"]')?.focus();
+  };
+ });
+ const target=$('activityTrend');
+ const rows=data.tracker.weeks.map((w,i)=>({week:i+1,value:metricNum(w[key])})).filter(r=>r.value!==null);
+ if(!rows.length){
+  target.innerHTML='<p class="activity-empty">No '+def.label.toLowerCase()+' recorded yet. Add weekly totals in <strong>Weekly records</strong> below.</p>';
+  return;
+ }
+ const latest=rows.at(-1),previous=rows.length>1?rows.at(-2):null;
+ const max=Math.max(key==='workouts'?4:0,...rows.map(r=>r.value),1);
+ const delta=previous?latest.value-previous.value:null;
+ const comparison=delta===null?'Add another week to see a comparison':delta===0?'Same as the previous recorded week':(delta>0?'+':'−')+def.format(Math.abs(delta))+' '+def.unit+' vs. previous recorded week';
+ target.innerHTML='<div class="activity-headline"><div><strong>Week '+latest.week+': '+def.latest(latest.value)+'</strong><small>'+def.description+'</small></div><span>'+comparison+'</span></div>'+
+ '<div class="activity-bars" role="img" aria-label="'+def.label+' by recorded week: '+rows.map(r=>'week '+r.week+', '+def.format(r.value)+' '+def.unit).join('; ')+'">'+
+ rows.map(r=>'<div class="activity-col"><div class="activity-value">'+def.format(r.value)+'</div><div class="activity-rail"><div class="activity-fill" style="height:'+Math.max(r.value===0?0:3,Math.min(100,100*r.value/max))+'%"></div></div><small>W'+r.week+'</small></div>').join('')+'</div>'+
+ '<p class="activity-context">'+(key==='workouts'?'Aim for consistency and recovery; a lower week is not automatically a setback.':key==='steps'?'Step averages help show activity, but more is not always better.':'Cardio minutes reflect volume, not how hard or well you recovered.')+'</p>';
+}
+
 function renderDashboard(){
  const t=data.tracker,ws=recordedWeeks();
  const last=(key,valid)=>ws.filter(w=>valid(w[key])!==null).at(-1)||null;
@@ -346,14 +385,7 @@ function renderDashboard(){
  dashboardMetric('Daily steps',steps?metricNum(steps.steps):null,'steps',steps&&stepPrev?metricNum(steps.steps)-metricNum(stepPrev.steps):null,'previous week',false)+
  dashboardMetric('Cardio',cardio?metricNum(cardio.cardio):null,'min',cardio&&cardioPrev?metricNum(cardio.cardio)-metricNum(cardioPrev.cardio):null,'previous week',false)+
  '</div><p class="dashboard-guidance">A steady abdomen/weight trend and consistent activity matter more than hitting a new record every week. Rest and recovery count, too.</p>';
- const full=data.tracker.weeks;
- for(const [id,key,unit,maxTarget] of [['workoutTrend','workouts','/4',4],['stepsTrend','steps','steps',null],['cardioTrend','cardio','min',null]]){
-  const rows=full.map((w,i)=>({week:i+1,value:metricNum(w[key])})).filter(w=>w.value!==null);
-  const el=$(id);
-  if(!rows.length){el.innerHTML='<p class="hint">No '+(key==='workouts'?'workout totals':key==='steps'?'step averages':'cardio minutes')+' recorded yet. Add them in Weekly records.</p>';continue}
-  const max=Math.max(maxTarget||0,...rows.map(w=>w.value),1);
-  el.innerHTML='<div class="activity-bars">'+rows.map(w=>'<div class="activity-col"><div class="activity-value">'+(key==='steps'?Math.round(w.value).toLocaleString():w.value)+'</div><div class="activity-rail"><div class="activity-fill" style="height:'+Math.max(2,Math.min(100,100*w.value/max))+'%"></div></div><small>W'+w.week+'</small></div>').join('')+'</div>';
- }
+ renderActivityTabs();
  const sample=ws.filter(w=>validMeasure(w.weight)!==null);
  const waistSample=ws.filter(w=>validMeasure(w.waist)!==null);
  let summary='Four-week trend: Log at least four weekly weigh-ins or abdomen measurements to see a meaningful comparison.';
